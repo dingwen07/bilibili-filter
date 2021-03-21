@@ -130,3 +130,5 @@ dmypy.json
 
 # Pickle object file
 *.pkl
+
+*.csv

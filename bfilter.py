@@ -1,10 +1,13 @@
 import time
+import os
 import json
 from typing import Iterable
 import requests
 import pickle
 import csv
 from selenium import webdriver
+
+ITER_INTERVAL = 0.5
 
 
 class FilterController(object):
@@ -75,9 +78,10 @@ class FilterManager(object):
     def fetch_filters(self) -> None:
         self.controller.fetch_filters()
         self.remote_filters = []
-        for rule in self.controller.filters['data']['rule']:
-            self.remote_filters.append(
-                (str(rule['type']), str(rule['filter']), str(rule['id'])))
+        if self.controller.filters['data']['rule'] != None:
+            for rule in self.controller.filters['data']['rule']:
+                self.remote_filters.append(
+                    (str(rule['type']), str(rule['filter']), str(rule['id'])))
 
     def list_filters(self, remote=True) -> str:
         if remote:
@@ -99,7 +103,7 @@ class FilterManager(object):
 
     def upload_filters(self,
                        retry: int = 0,
-                       interval: float = 0.5) -> Iterable[Iterable]:
+                       interval: float = ITER_INTERVAL) -> Iterable[Iterable]:
         failed = self._upload_filters(self.local_filters, interval)
         while retry > 0 and len(failed) > 0:
             interval += 0.5
@@ -108,7 +112,7 @@ class FilterManager(object):
 
     def _upload_filters(self,
                         filters: Iterable[Iterable],
-                        interval: float = 0.5) -> Iterable[Iterable]:
+                        interval: float = ITER_INTERVAL) -> Iterable[Iterable]:
         failed = []
         for filter in filters:
             response = self.controller.add(filter[0], filter[1])
@@ -123,12 +127,45 @@ class FilterManager(object):
         self.fetch_filters()
         return failed
 
+    def bakcup_filters(self, file='filters/backup.csv'):
+        try:
+            os.makedirs(os.path.dirname(file))
+        except:
+            pass
+        self.dump_filters(file=file, append=True, remote=True)
+
+    def delete_all_filters(self,
+                           retry: int = 0,
+                           interval: float = ITER_INTERVAL):
+        failed = self._delete_filters(self.remote_filters, interval)
+        while retry > 0 and len(failed) > 0:
+            interval += 0.5
+            failed = self._delete_all_filters(failed, interval)
+        return failed
+
+    def _delete_filters(self,
+                        filters: Iterable[Iterable],
+                        interval: float = ITER_INTERVAL) -> Iterable[Iterable]:
+        self.bakcup_filters()
+        failed = []
+        for filter in filters:
+            response = self.controller.delete(filter[2])
+            if response['code'] == 0:
+                print('filter {}({}:{}) deleted'.format(
+                    str(filter[2]), str(filter[0]), str(filter[1])))
+            else:
+                failed.append(filter)
+                print('failed to delete filter {}({}:{})'.format(
+                    str(filter[2]), str(filter[0]), str(filter[1])))
+            time.sleep(interval)
+        return failed
+
     def load_filters(self, file: str) -> None:
         self.local_filters = self._load_filters(file)
 
     def dump_filters(self,
                      file: str,
-                     append: str = False,
+                     append: bool = False,
                      remote: bool = False):
         filters = []
         if remote:
@@ -188,7 +225,6 @@ def selenium_login_firefox():
     browser.close()
     return cookies
 
-
 def login() -> FilterController:
     cookies = selenium_login_firefox()
     session = set_cookies(cookies)
@@ -205,5 +241,7 @@ if __name__ == '__main__':
     fm = FilterManager(fc)
     fm.list_filters()
     fm.load_filters('test.csv')
-    fm.upload_filters()
+    #fm.upload_filters()
+    fm.delete_all_filters()
+    fm.fetch_filters()
     fm.list_filters()
