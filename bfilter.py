@@ -12,9 +12,9 @@ ITER_INTERVAL = 0.5
 
 class FilterController(object):
     def __init__(
-        self,
-        load_cookies: bool = False,
-        session: requests.sessions.Session = requests.Session()
+            self,
+            load_cookies: bool = False,
+            session: requests.sessions.Session = requests.Session()
     ) -> None:
         super().__init__()
         self.session = session
@@ -225,6 +225,7 @@ def selenium_login_firefox():
     browser.close()
     return cookies
 
+
 def login() -> FilterController:
     cookies = selenium_login_firefox()
     session = set_cookies(cookies)
@@ -235,13 +236,13 @@ def login() -> FilterController:
 
 if __name__ == '__main__':
     fc = FilterController.load()
-    #fm.add('6')
-    #fc = login()
-    #fc.save_cookies()
+    # fm.add('6')
+    # fc = login()
+    # fc.save_cookies()
     fm = FilterManager(fc)
     fm.list_filters()
     fm.load_filters('test.csv')
-    #fm.upload_filters()
+    # fm.upload_filters()
     fm.delete_all_filters()
     fm.fetch_filters()
     fm.list_filters()
